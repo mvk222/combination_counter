@@ -1,9 +1,24 @@
 import os
-import pandas as pd
-from flask import Flask, send_file, flash, request, redirect, url_for, send_from_directory,render_template
+from flask import Flask, send_file, flash, request, redirect, url_for,render_template
 from werkzeug.utils import secure_filename
 from combination_counter.combination_counter import CombinationCounter
 import shutil
+from celery import Celery
+
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(app.config)
+
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+    celery.Task = ContextTask
+    return celery
 
 UPLOAD_FOLDER = 'files_to_process'
 ALLOWED_EXTENSIONS = {'xlsx'}
@@ -12,6 +27,12 @@ app = Flask(__name__)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1000 * 1000
+app.config.update(
+    CELERY_BROKER_URL='redis://localhost:6379',
+    CELERY_RESULT_BACKEND='redis://localhost:6379'
+)
+celery = make_celery(app)
+
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -39,12 +60,25 @@ def upload_file():
             return redirect(url_for('load_and_process'))
     return render_template("upload.html")
 
-@app.route('/load_and_process')
-def load_and_process():
+@celery.task
+def background_task():
     for file in os.listdir("files_to_process"):
         if file.endswith(".xlsx"):
-            df = pd.read_excel(f"files_to_process/{file}")
+            path = file
     counter = CombinationCounter()
-    result = counter.count_combinations(df)
-    result[result['count']>3].sort_values('count',ascending=False).reset_index(drop=True).to_csv(f"files_to_process/{file}.csv")
-    return send_file(f"../files_to_process/{file}.csv", as_attachment=True)
+    counter.count_combinations(path)
+
+@app.route('/load_and_process')
+def load_and_process():
+    app.comb_results = background_task.delay()
+    return redirect(url_for('download_file'))
+
+@app.route('/download_file', methods=['GET', 'POST'])
+def download_file():
+    if request.method == 'POST':
+        for file in os.listdir("files_to_process"):
+            if file.endswith(".csv"):
+                return send_file(f"../files_to_process/{file}", as_attachment=True)
+        else:
+            return redirect(request.url)
+    return render_template("download.html")
