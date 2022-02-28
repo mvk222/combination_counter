@@ -4,8 +4,8 @@ from flask import send_file
 
 class CombinationCounter():
 
-    def count_combinations(self, path):
-        df = pd.read_excel(f"files_to_process/{path}")
+    def count_combinations(self, df):
+        df.copy()
         df = df[['VPN','Var1','Var2']]
         df.columns = ['Versuchspersonennummer','Item','Gruppe']
         df = df.pivot_table(values='Item',
@@ -31,4 +31,4 @@ class CombinationCounter():
             occurance.append(str(value))
             count.append(len(value))
         result = pd.DataFrame({"kombination":comb,"auftreten":occurance,"count":count})
-        result[result['count']>3].sort_values('count',ascending=False).reset_index(drop=True).to_csv(f"files_to_process/{path}.csv")
+        return result
