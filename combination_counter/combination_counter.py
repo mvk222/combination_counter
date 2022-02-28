@@ -1,6 +1,5 @@
 import pandas as pd
 from itertools import combinations
-from flask import send_file
 
 class CombinationCounter():
 
