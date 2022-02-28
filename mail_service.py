@@ -8,6 +8,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 from combination_counter.combination_counter import CombinationCounter
 
+import os, sys
+
+os.chdir('/'.join(sys.argv[0].split('/')[:-1]))
+
 server=e.connect("imap.gmail.com",user,password)
 
 files_read = joblib.load("files_read")
