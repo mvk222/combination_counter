@@ -38,7 +38,7 @@ for idx in list(set(server.listids()) - set(files_read)):
                     obj = MIMEBase('application','octet-stream')
                     obj.set_payload((attachment).read())
                     encoders.encode_base64(obj)
-                    obj.add_header('Content-Disposition',"attachment; filename= "+file_name[0])
+                    obj.add_header('Content-Disposition',"attachment; filename= "+f"{file_name[0]}.csv")
                     message.attach(obj)
                     my_message = message.as_string()
                     email_session = smtplib.SMTP('smtp.gmail.com',587)
