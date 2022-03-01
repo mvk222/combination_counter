@@ -17,6 +17,8 @@ server=e.connect("imap.gmail.com",user,password)
 files_read = joblib.load("files_read")
 
 for idx in list(set(server.listids()) - set(files_read)):
+    files_read.append(idx)
+    joblib.dump(files_read, "files_read")
     email = server.mail(idx)
     if email.title == "convert":
         for attachment in email.attachments:
@@ -33,7 +35,7 @@ for idx in list(set(server.listids()) - set(files_read)):
                     message = MIMEMultipart()
                     message["From"] = user
                     message['To'] = email.from_addr
-                    message['Subject'] = f"converted xlsx {file_name[0]}"
+                    message['Subject'] = f"Konvertierung von {file_name[0]}.xlsx erfolgreich :)"
                     attachment = open(f"processed_files/{file_name[0]}.csv",'rb')
                     obj = MIMEBase('application','octet-stream')
                     obj.set_payload((attachment).read())
@@ -49,5 +51,3 @@ for idx in list(set(server.listids()) - set(files_read)):
                     print(f"Mail to {email.from_addr} has been sent")
                 except:
                     print(f"Error in file {attachment[0]} from {email.from_addr}. File skipped.")
-    files_read.append(idx)
-    joblib.dump(files_read, "files_read")
